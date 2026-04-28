@@ -571,7 +571,7 @@
       return;
     }
     try {
-      const reg = await navigator.serviceWorker.register('/phantom-sw.js', { scope: '/' });
+      const reg = await navigator.serviceWorker.register('phantom-sw.js', { scope: './' });
       console.log('[Phantom] SW enregistré:', reg.scope);
       document.getElementById('stat-status').textContent = 'ACTIF';
     } catch (e) {
