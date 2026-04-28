@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Phantom — Proxy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080b10;
+      --surface: #0e1420;
+      --border: #1e2d45;
+      --accent: #00f5c4;
+      --accent2: #7b5cff;
+      --text: #c8d8f0;
+      --muted: #4a6080;
+      --danger: #ff4560;
+      --glow: 0 0 24px rgba(0,245,196,0.18);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,245,196,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,196,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 60% 30%, rgba(123,92,255,0.07) 0%, transparent 60%),
+                  radial-gradient(ellipse at 20% 80%, rgba(0,245,196,0.05) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: drift 20s ease-in-out infinite alternate;
+    }
+
+    @keyframes drift {
+      from { transform: translate(0,0) rotate(0deg); }
+      to { transform: translate(3%, 2%) rotate(1deg); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    /* Logo */
+    .logo {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeDown 0.8s ease both;
+    }
+
+    .logo-icon {
+      display: inline-block;
+      width: 64px;
+      height: 64px;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .logo-icon svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 12px rgba(0,245,196,0.5));
+    }
+
+    .logo h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo p {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 0.5rem;
+    }
+
+    /* Search card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5), var(--glow);
+      animation: fadeUp 0.8s 0.2s ease both;
+    }
+
+    .search-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .search-label::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .search-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: stretch;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-input::placeholder { color: var(--muted); }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,245,196,0.1);
+    }
+
+    .search-btn {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .search-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0,245,196,0.3);
+    }
+
+    .search-btn:active { transform: translateY(0); }
+
+    .search-btn svg { width: 16px; height: 16px; }
+
+    /* Quick links */
+    .quick-links {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .quick-links span {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding-top: 0.15rem;
+    }
+
+    .quick-link {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent2);
+      text-decoration: none;
+      background: rgba(123,92,255,0.1);
+      border: 1px solid rgba(123,92,255,0.25);
+      border-radius: 6px;
+      padding: 0.25rem 0.6rem;
+      transition: background 0.15s, border-color 0.15s;
+      cursor: pointer;
+    }
+
+    .quick-link:hover {
+      background: rgba(123,92,255,0.2);
+      border-color: var(--accent2);
+    }
+
+    /* Status bar */
+    .status-bar {
+      margin-top: 2rem;
+      display: flex;
+      gap: 2rem;
+      animation: fadeUp 0.8s 0.4s ease both;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-val {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 0.15rem;
+    }
+
+    /* Settings toggle */
+    .settings-row {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .toggle-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-pill input { display: none; }
+
+    .pill-track {
+      width: 32px;
+      height: 18px;
+      background: var(--border);
+      border-radius: 9px;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .pill-track::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 12px;
+      height: 12px;
+      background: var(--muted);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .toggle-pill input:checked + .pill-track {
+      background: rgba(0,245,196,0.2);
+      border: 1px solid var(--accent);
+    }
+
+    .toggle-pill input:checked + .pill-track::after {
+      transform: translateX(14px);
+      background: var(--accent);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 3rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.1em;
+      animation: fadeUp 0.8s 0.6s ease both;
+    }
+
+    /* Frame overlay */
+    #proxy-frame-container {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--bg);
+      flex-direction: column;
+    }
+
+    #proxy-frame-container.active { display: flex; }
+
+    .frame-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .frame-back {
+      background: var(--border);
+      border: none;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      transition: background 0.15s;
+    }
+
+    .frame-back:hover { background: var(--accent); color: var(--bg); }
+
+    .frame-url {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.4rem 0.8rem;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #proxy-iframe {
+      flex: 1;
+      border: none;
+      width: 100%;
+    }
+
+    /* Animations */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Loading overlay */
+    #loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(8,11,16,0.92);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    #loading-overlay.active { display: flex; }
+
+    .loader-ring {
+      width: 56px;
+      height: 56px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loader-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    /* Error toast */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--surface);
+      border: 1px solid var(--danger);
+      border-radius: 12px;
+      padding: 0.75rem 1.5rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--danger);
+      z-index: 300;
+      transition: transform 0.3s ease;
+      white-space: nowrap;
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="28" stroke="#00f5c4" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+        <circle cx="32" cy="32" r="18" stroke="#00f5c4" stroke-width="1.5" opacity="0.7"/>
+        <circle cx="32" cy="32" r="6" fill="#00f5c4"/>
+        <line x1="32" y1="4" x2="32" y2="14" stroke="#00f5c4" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="32" y1="50" x2="32" y2="60" stroke="#00f5c4" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="4" y1="32" x2="14" y2="32" stroke="#00f5c4" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="50" y1="32" x2="60" y2="32" stroke="#00f5c4" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="32" cy="32" r="28" stroke="#7b5cff" stroke-width="0.5" opacity="0.3"/>
+      </svg>
+    </div>
+    <h1>Phantom</h1>
+    <p>Secure Web Proxy // v1.0</p>
+  </div>
+
+  <div class="card">
+    <div class="search-label">Destination</div>
+    <div class="search-row">
+      <input
+        type="text"
+        class="search-input"
+        id="url-input"
+        placeholder="https://example.com ou rechercher..."
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      />
+      <button class="search-btn" id="go-btn">
+        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        GO
+      </button>
+    </div>
+
+    <div class="quick-links">
+      <span>Rapide:</span>
+      <a class="quick-link" onclick="navigate('https://www.google.com')">Google</a>
+      <a class="quick-link" onclick="navigate('https://www.youtube.com')">YouTube</a>
+      <a class="quick-link" onclick="navigate('https://www.wikipedia.org')">Wikipedia</a>
+      <a class="quick-link" onclick="navigate('https://github.com')">GitHub</a>
+      <a class="quick-link" onclick="navigate('https://www.reddit.com')">Reddit</a>
+    </div>
+
+    <div class="settings-row">
+      <label class="toggle-pill">
+        <input type="checkbox" id="toggle-js" checked>
+        <span class="pill-track"></span>
+        JavaScript
+      </label>
+      <label class="toggle-pill">
+        <input type="checkbox" id="toggle-cookies" checked>
+        <span class="pill-track"></span>
+        Cookies
+      </label>
+      <label class="toggle-pill">
+        <input type="checkbox" id="toggle-newtab">
+        <span class="pill-track"></span>
+        Nouvel onglet
+      </label>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="stat">
+      <div class="stat-val" id="stat-status">ACTIF</div>
+      <div class="stat-label">Service Worker</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-enc">XOR+B64</div>
+      <div class="stat-label">Encodage</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-reqs">0</div>
+      <div class="stat-label">Requêtes</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    PHANTOM PROXY // GITHUB PAGES // SERVICE WORKER POWERED
+  </div>
+</div>
+
+<!-- Proxy frame -->
+<div id="proxy-frame-container">
+  <div class="frame-bar">
+    <button class="frame-back" onclick="closeFrame()">← Retour</button>
+    <div class="frame-url" id="frame-url-display">—</div>
+  </div>
+  <iframe id="proxy-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-top-navigation"></iframe>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="loader-ring"></div>
+  <div class="loader-text">Connexion en cours...</div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ─── Request counter ───────────────────────────────────────────────
+  let reqCount = 0;
+
+  // ─── Service Worker registration ───────────────────────────────────
+  async function registerSW() {
+    if (!('serviceWorker' in navigator)) {
+      document.getElementById('stat-status').textContent = 'N/A';
+      document.getElementById('stat-status').style.color = 'var(--danger)';
+      showToast('Service Worker non supporté sur ce navigateur.');
+      return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.register('/phantom-sw.js', { scope: '/' });
+      console.log('[Phantom] SW enregistré:', reg.scope);
+      document.getElementById('stat-status').textContent = 'ACTIF';
+    } catch (e) {
+      console.warn('[Phantom] SW erreur:', e);
+      document.getElementById('stat-status').textContent = 'ERREUR';
+      document.getElementById('stat-status').style.color = 'var(--danger)';
+    }
+  }
+
+  registerSW();
+
+  // ─── URL encoding (XOR + Base64) ───────────────────────────────────
+  const XOR_KEY = 0x5A; // modifiable
+
+  function encodeURL(url) {
+    const bytes = new TextEncoder().encode(url);
+    const xored = bytes.map(b => b ^ XOR_KEY);
+    return btoa(String.fromCharCode(...xored))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '~');
+  }
+
+  function decodeURL(encoded) {
+    const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/').replace(/~/g, '=');
+    const decoded = atob(b64);
+    const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+    const unxored = bytes.map(b => b ^ XOR_KEY);
+    return new TextDecoder().decode(unxored);
+  }
+
+  // Expose for SW
+  window.__phantomEncode = encodeURL;
+  window.__phantomDecode = decodeURL;
+
+  // ─── Navigation ────────────────────────────────────────────────────
+  function normalizeURL(input) {
+    input = input.trim();
+    if (!input) return null;
+    // If it looks like a search query, use Google
+    if (!input.includes('.') || input.includes(' ')) {
+      return 'https://www.google.com/search?q=' + encodeURIComponent(input);
+    }
+    if (!/^https?:\/\//i.test(input)) {
+      input = 'https://' + input;
+    }
+    try { new URL(input); return input; } catch { return null; }
+  }
+
+  function navigate(rawURL) {
+    const url = normalizeURL(rawURL || document.getElementById('url-input').value);
+    if (!url) { showToast('URL invalide.'); return; }
+
+    const newTab = document.getElementById('toggle-newtab').checked;
+    const encoded = encodeURL(url);
+    const proxyPath = '/proxy/' + encoded;
+
+    // Update stats
+    reqCount++;
+    document.getElementById('stat-reqs').textContent = reqCount;
+    document.getElementById('frame-url-display').textContent = url;
+
+    if (newTab) {
+      window.open(proxyPath, '_blank');
+      return;
+    }
+
+    showLoading();
+    const iframe = document.getElementById('proxy-iframe');
+    iframe.onload = hideLoading;
+    iframe.onerror = () => { hideLoading(); showToast('Impossible de charger cette page.'); };
+    iframe.src = proxyPath;
+    document.getElementById('proxy-frame-container').classList.add('active');
+  }
+
+  function closeFrame() {
+    document.getElementById('proxy-frame-container').classList.remove('active');
+    document.getElementById('proxy-iframe').src = '';
+  }
+
+  // ─── UI helpers ────────────────────────────────────────────────────
+  function showLoading() { document.getElementById('loading-overlay').classList.add('active'); }
+  function hideLoading() { document.getElementById('loading-overlay').classList.remove('active'); }
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // ─── Input events ──────────────────────────────────────────────────
+  document.getElementById('go-btn').addEventListener('click', () => navigate());
+  document.getElementById('url-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') navigate();
+  });
+</script>
+</body>
+</html>

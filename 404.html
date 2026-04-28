@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Phantom — Redirection</title>
+  <script>
+    // GitHub Pages SPA trick: redirect 404 to index with path preserved
+    const path = window.location.pathname + window.location.search;
+    sessionStorage.setItem('phantom_redirect', path);
+    window.location.replace('/');
+  </script>
+</head>
+<body>
+  <p>Redirection en cours...</p>
+</body>
+</html>
