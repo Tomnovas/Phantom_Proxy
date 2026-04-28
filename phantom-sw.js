@@ -5,7 +5,7 @@
  */
 
 const PHANTOM_VERSION = '1.0.0';
-const PROXY_PREFIX = '/proxy/';
+const PROXY_PREFIX = '/Phantom_Proxy/proxy/';
 const XOR_KEY = 0x5A; // Doit correspondre à index.html
 
 // ─── URL encoding ────────────────────────────────────────────────────
