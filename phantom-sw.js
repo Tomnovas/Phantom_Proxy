@@ -7,7 +7,7 @@
  */
 
 const PHANTOM_VERSION = '1.1.0';
-const PROXY_PREFIX = 'proxy/';  // ✅ FIX #1: slash au début OBLIGATOIRE
+const PROXY_PREFIX = '/Phantom_Proxy/proxy/';  // ✅ FIX #1: slash au début OBLIGATOIRE
 const XOR_KEY = 0x5A;
 
 // CORS proxies publics — essayés dans l'ordre

@@ -633,7 +633,7 @@
     const basePath = window.location.pathname.endsWith('/')
       ? window.location.pathname.slice(0,-1)
       : window.location.pathname.replace(/\/[^/]*$/, '') || '';
-    const proxyPath = basePath + '/proxy/' + encoded;
+    const proxyPath = basePath + 'proxy/' + encoded;
 
     // Update stats
     reqCount++;
