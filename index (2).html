@@ -571,7 +571,10 @@
       return;
     }
     try {
-      const reg = await navigator.serviceWorker.register('phantom-sw.js', { scope: './' });
+      // ✅ FIX #2: chemin relatif + scope relatif pour GitHub Pages sous-dossier
+      const swPath = new URL('phantom-sw.js', window.location.href).pathname;
+      const scopePath = new URL('./', window.location.href).pathname;
+      const reg = await navigator.serviceWorker.register(swPath, { scope: scopePath });
       console.log('[Phantom] SW enregistré:', reg.scope);
       document.getElementById('stat-status').textContent = 'ACTIF';
     } catch (e) {
@@ -625,7 +628,12 @@
 
     const newTab = document.getElementById('toggle-newtab').checked;
     const encoded = encodeURL(url);
-    const proxyPath = '/proxy/' + encoded;
+
+    // ✅ FIX #3: chemin relatif pour fonctionner sous /Phantom_Proxy/
+    const basePath = window.location.pathname.endsWith('/')
+      ? window.location.pathname.slice(0,-1)
+      : window.location.pathname.replace(/\/[^/]*$/, '') || '';
+    const proxyPath = basePath + '/proxy/' + encoded;
 
     // Update stats
     reqCount++;
