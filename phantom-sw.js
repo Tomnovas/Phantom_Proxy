@@ -1,12 +1,12 @@
 /**
- * Phantom Proxy — Service Worker v1.1
+ * Phantom Proxy — Service Worker v1.2
  * FIXES:
  *  - PROXY_PREFIX avec /  au début (fix pathname matching)
  *  - CORS proxy fallback pour contourner les restrictions GitHub Pages
  *  - Meilleure gestion des erreurs
  */
 
-const PHANTOM_VERSION = '1.1.0';
+const PHANTOM_VERSION = '1.2.0';
 const PROXY_PREFIX = '/Phantom_Proxy/proxy/';  // ✅ FIX #1: slash au début OBLIGATOIRE
 const XOR_KEY = 0x5A;
 
@@ -184,15 +184,21 @@ async function handleProxyRequest(request, parsedURL) {
 // ─── Build request headers ───────────────────────────────────────────
 function buildHeaders(request, targetURL) {
   const headers = new Headers();
-  const copy = ['accept', 'accept-language', 'content-type', 'cache-control'];
+  
+  // On ne garde que le strict nécessaire
+  const copy = ['accept', 'accept-language', 'content-type'];
   for (const h of copy) {
     const v = request.headers.get(h);
     if (v) headers.set(h, v);
   }
-  const origin = new URL(targetURL).origin;
-  headers.set('Origin', origin);
-  headers.set('Referer', targetURL);
+
+  // On force un User-Agent de Chromebook propre (comme dans ton code)
   headers.set('User-Agent', 'Mozilla/5.0 (X11; CrOS x86_64 15311.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36');
+  
+  // TRÈS IMPORTANT : On supprime toute mention de l'origine du proxy
+  headers.delete('X-Forwarded-For');
+  headers.delete('Via');
+  
   return headers;
 }
 
@@ -201,7 +207,7 @@ function rewriteHTML(html, baseURL, encodedBase) {
   const base = new URL(baseURL);
 
   const injection = `<script>
-/* Phantom Proxy Runtime v1.1 */
+/* Phantom Proxy Runtime v1.2 — YouTube & Security Patch */
 (function() {
   const _XOR = ${XOR_KEY};
   const _PREFIX = '${PROXY_PREFIX}';
@@ -246,19 +252,39 @@ function rewriteHTML(html, baseURL, encodedBase) {
     });
   } catch(e) {}
 
-  // Patch fetch
+  // Patch fetch & XHR
   const _oFetch = window.fetch;
   window.fetch = function(input, init) {
     const url = input instanceof Request ? input.url : String(input);
-    const p = _proxy(url);
-    return _oFetch(p, init);
+    return _oFetch(_proxy(url), init);
   };
 
-  // Patch XHR
   const _oOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(m, url, ...a) {
     return _oOpen.call(this, m, _proxy(url), ...a);
   };
+
+  // --- NOUVEAUX PATCHES v1.2 ---
+
+  // Patch Beacon (Stats YouTube)
+  if (navigator.sendBeacon) {
+    const _oBeacon = navigator.sendBeacon;
+    navigator.sendBeacon = function(url, data) {
+      return _oBeacon.call(this, _proxy(url), data);
+    };
+  }
+
+  // Patch setAttribute (Pour les éléments créés dynamiquement en JS)
+  const _oSetAttr = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(name, val) {
+    if ((name === 'src' || name === 'href') && typeof val === 'string') {
+      val = _proxy(val);
+    }
+    return _oSetAttr.call(this, name, val);
+  };
+
+  // Anti Frame-Busting
+  try { window.self = window.top; } catch(e) {}
 
   // Patch History
   const _oPush = history.pushState.bind(history);
@@ -266,7 +292,7 @@ function rewriteHTML(html, baseURL, encodedBase) {
   history.pushState = (s,t,u) => _oPush(s, t, u ? _proxy(u) : u);
   history.replaceState = (s,t,u) => _oReplace(s, t, u ? _proxy(u) : u);
 
-  // Patch <a> clicks dynamically
+  // Patch clics
   document.addEventListener('click', function(e) {
     const a = e.target.closest('a');
     if (!a || !a.href) return;
@@ -316,7 +342,8 @@ function rewriteHTML(html, baseURL, encodedBase) {
 
   // Remove CSP meta tags
   html = html.replace(/<meta[^>]+http-equiv=["']?content-security-policy["']?[^>]*>/gi, '');
-
+  html = html.replace(/\bintegrity="[^"]*"/gi, '');
+  
   return html;
 }
 
